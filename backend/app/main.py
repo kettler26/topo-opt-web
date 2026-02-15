@@ -1,39 +1,49 @@
-"""TopoOpt Web - Backend API"""
+"""
+Topo-Opt-Web Backend — FastAPI Application (Phase 2)
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from loguru import logger
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from app.api import geometry, optimization, health
-from app.core.config import settings
 
 app = FastAPI(
-    title="TopoOpt Web API",
-    description="Topology Optimization Web Application API",
-    version="0.1.0",
+    title="Topo-Opt-Web API",
+    description="Topologie-Optimierung Backend mit 3D-Geometrieverarbeitung, CAD-Style BCs, und Named Selections",
+    version="0.2.0",
 )
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routes
-app.include_router(health.router, tags=["Health"])
-app.include_router(geometry.router, prefix="/api/geometry", tags=["Geometry"])
-app.include_router(optimization.router, prefix="/api/optimization", tags=["Optimization"])
+# Routers
+app.include_router(health.router, tags=["health"])
+app.include_router(geometry.router, prefix="/api/geometry", tags=["geometry"])
+app.include_router(optimization.router, prefix="/api/optimization", tags=["optimization"])
+
+# Serve uploaded/result files
+UPLOAD_DIR = Path("uploads")
+RESULT_DIR = Path("results")
+UPLOAD_DIR.mkdir(exist_ok=True)
+RESULT_DIR.mkdir(exist_ok=True)
 
 
 @app.on_event("startup")
 async def startup():
-    logger.info("TopoOpt Web API starting up...")
-    logger.info(f"Upload dir: {settings.UPLOAD_DIR}")
-    logger.info(f"Results dir: {settings.RESULTS_DIR}")
+    print("🏗️  Topo-Opt-Web Backend v0.2.0 gestartet")
+    print("📐 STEP-Support:", "verfügbar" if _check_occ() else "nicht verfügbar (pythonocc fehlt)")
 
 
-@app.on_event("shutdown")
-async def shutdown():
-    logger.info("TopoOpt Web API shutting down...")
+def _check_occ() -> bool:
+    try:
+        from OCP.STEPControl import STEPControl_Reader
+        return True
+    except ImportError:
+        return False

@@ -1,55 +1,108 @@
 import { useState } from 'react'
-import { Upload, Settings, Play, Layers, Anchor, ArrowDownToLine } from 'lucide-react'
-import FileUpload from './FileUpload'
+import { useModelStore } from '../store/useStore'
 import BoundaryConditions from './BoundaryConditions'
+import NamedSelections from './NamedSelections'
+import ContactConditions from './ContactConditions'
 import OptimizationPanel from './OptimizationPanel'
+import MeshRefinement from './MeshRefinement'
 
-type Tab = 'geometry' | 'boundary' | 'optimize'
+type Tab = 'model' | 'selections' | 'bc' | 'contacts' | 'mesh' | 'optimize'
 
 export default function Sidebar() {
-  const [activeTab, setActiveTab] = useState<Tab>('geometry')
+  const [activeTab, setActiveTab] = useState<Tab>('model')
+  const { model } = useModelStore()
 
-  const tabs = [
-    { id: 'geometry' as Tab, label: 'Geometrie', icon: Layers },
-    { id: 'boundary' as Tab, label: 'Randbedingungen', icon: Anchor },
-    { id: 'optimize' as Tab, label: 'Optimierung', icon: Play },
+  const tabs: { id: Tab; label: string; icon: string }[] = [
+    { id: 'model', label: 'Modell', icon: '📐' },
+    { id: 'selections', label: 'Selektionen', icon: '🎯' },
+    { id: 'bc', label: 'RB', icon: '📌' },
+    { id: 'contacts', label: 'Kontakte', icon: '🤝' },
+    { id: 'mesh', label: 'Netz', icon: '🔧' },
+    { id: 'optimize', label: 'Optim.', icon: '⚡' },
   ]
 
   return (
-    <div className="w-80 bg-slate-800 border-r border-slate-700 flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-700">
-        <h1 className="text-lg font-bold text-white flex items-center gap-2">
-          <span className="text-2xl">🏗️</span>
-          TopoOpt Web
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">Topologie-Optimierung</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-slate-700">
-        {tabs.map(({ id, label, icon: Icon }) => (
+    <div className="flex flex-col h-full">
+      {/* Tab bar — scrollable for many tabs */}
+      <div className="flex border-b border-gray-700 overflow-x-auto">
+        {tabs.map((tab) => (
           <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex-1 py-2 px-3 text-xs font-medium flex flex-col items-center gap-1 transition-colors ${
-              activeTab === id
-                ? 'text-blue-400 bg-slate-700/50 border-b-2 border-blue-400'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-shrink-0 py-2.5 px-2 text-[10px] font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'bg-gray-700 text-topo-400 border-b-2 border-topo-400'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-750'
             }`}
           >
-            <Icon size={16} />
-            {label}
+            <span className="block text-center">{tab.icon}</span>
+            <span className="block text-center">{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === 'geometry' && <FileUpload />}
-        {activeTab === 'boundary' && <BoundaryConditions />}
+        {activeTab === 'model' && <ModelTab />}
+        {activeTab === 'selections' && <NamedSelections />}
+        {activeTab === 'bc' && <BoundaryConditions />}
+        {activeTab === 'contacts' && <ContactConditions />}
+        {activeTab === 'mesh' && <MeshRefinement />}
         {activeTab === 'optimize' && <OptimizationPanel />}
       </div>
+    </div>
+  )
+}
+
+function ModelTab() {
+  const { model } = useModelStore()
+
+  if (!model) {
+    return (
+      <div className="text-center text-gray-400 py-8">
+        <p className="text-4xl mb-4">📂</p>
+        <p className="text-sm">Keine Geometrie geladen.</p>
+        <p className="text-xs mt-2">Nutze \"Importieren\" in der Toolbar.</p>
+      </div>
+    )
+  }
+
+  const info = model.meshInfo as any
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold text-gray-200">Modell-Info</h3>
+      <div className="space-y-2 text-xs">
+        <InfoRow label="Datei" value={model.filename} />
+        <InfoRow label="Format" value={model.format} />
+        <InfoRow label="Vertices" value={info?.vertices?.toLocaleString() ?? info?.num_vertices?.toLocaleString() ?? '—'} />
+        <InfoRow label="Faces" value={info?.faces?.toLocaleString() ?? info?.num_faces?.toLocaleString() ?? '—'} />
+        <InfoRow label="Wasserdicht" value={info?.is_watertight ? '✅ Ja' : '❌ Nein'} />
+        {info?.volume && <InfoRow label="Volumen" value={`${info.volume.toFixed(4)}`} />}
+        {info?.surface_area && <InfoRow label="Oberfläche" value={`${info.surface_area.toFixed(4)}`} />}
+      </div>
+
+      {/* STEP-specific info */}
+      {info?.solids != null && (
+        <div className="mt-4">
+          <h4 className="text-xs font-semibold text-gray-300 mb-2">CAD-Topologie</h4>
+          <div className="space-y-1 text-xs">
+            <InfoRow label="Körper" value={String(info.solids)} />
+            <InfoRow label="Flächen" value={String(info.faces)} />
+            <InfoRow label="Kanten" value={String(info.edges)} />
+            <InfoRow label="Eckpunkte" value={String(info.vertices)} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-200 font-medium">{value}</span>
     </div>
   )
 }

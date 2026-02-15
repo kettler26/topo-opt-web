@@ -1,98 +1,148 @@
 import { create } from 'zustand'
 
-export interface BoundaryCondition {
-  id: string
-  type: 'fixation' | 'force' | 'pressure' | 'temperature'
-  name: string
-  selectionType: 'faces' | 'vertices'
-  selectionIds: number[]
-  forceVector?: number[]
-  pressureValue?: number
-  temperatureValue?: number
-  fixedDofs?: string[]
+export interface MeshInfo {
+  vertices?: number
+  num_vertices?: number
+  faces?: number
+  num_faces?: number
+  is_watertight?: boolean
+  volume?: number | null
+  surface_area?: number
+  bounds_min?: number[]
+  bounds_max?: number[]
+  center?: number[]
+  // STEP-specific
+  solids?: number
+  edges?: number
+  error?: string
 }
 
-interface Geometry {
-  id: string
+export interface ModelData {
+  fileId: string
   filename: string
   format: string
-  vertices_count: number
-  faces_count: number
-  bounding_box?: { min: number[]; max: number[] }
-  volume?: number
+  meshInfo: MeshInfo | null
+  geometryUrl: string | null
+  namedSelections: NamedSelectionData[]
 }
 
-interface MeshData {
-  vertices: number[][]
-  faces: number[][]
-  normals?: number[][]
+export interface NamedSelectionData {
+  id: string
+  name: string
+  entityType: string
+  entityIndices: number[]
+  color: string
+  visible: boolean
 }
 
-interface OptimizationResult {
-  job_id: string
+export interface BoundaryCondition {
+  id: string
+  type: string
+  name: string
+  visible: boolean
+  namedSelectionId?: string
+  config: Record<string, unknown>
+}
+
+export interface ContactConditionData {
+  id: string
+  name: string
+  contactType: string
+  masterSelectionId: string
+  slaveSelectionId: string
+  frictionCoefficient: number
+  active: boolean
+}
+
+export interface OptimizationConfig {
+  volumeFraction: number
+  penalty: number
+  filterRadius: number
+  maxIterations: number
+  tolerance: number
+}
+
+export interface OptimizationJob {
+  jobId: string
   status: string
-  result?: {
-    result_id: string
-    final_compliance: number
-    iterations: number
-  }
+  iteration: number
+  maxIterations: number
+  compliance: number
+  change: number
+  resultFileId?: string
 }
 
-interface Store {
-  // Geometry
-  geometry: Geometry | null
-  setGeometry: (geometry: Geometry | null) => void
-
-  // Mesh data for 3D viewer
-  meshData: MeshData | null
-  setMeshData: (data: MeshData | null) => void
+interface AppStore {
+  // Model
+  model: ModelData | null
+  setModel: (model: ModelData | null) => void
 
   // Boundary conditions
   boundaryConditions: BoundaryCondition[]
   addBoundaryCondition: (bc: BoundaryCondition) => void
   removeBoundaryCondition: (id: string) => void
-  updateBoundaryCondition: (id: string, updates: Partial<BoundaryCondition>) => void
+  updateBoundaryCondition: (id: string, update: Partial<BoundaryCondition>) => void
+
+  // Contact conditions
+  contactConditions: ContactConditionData[]
+  addContactCondition: (cc: ContactConditionData) => void
+  removeContactCondition: (id: string) => void
+  updateContactCondition: (id: string, update: Partial<ContactConditionData>) => void
 
   // Optimization
-  optimizationResult: OptimizationResult | null
-  setOptimizationResult: (result: OptimizationResult | null) => void
+  optimizationConfig: OptimizationConfig
+  setOptimizationConfig: (config: Partial<OptimizationConfig>) => void
+  isOptimizing: boolean
+  setIsOptimizing: (val: boolean) => void
+  currentJob: OptimizationJob | null
+  setCurrentJob: (job: OptimizationJob | null) => void
 
-  // UI
-  showWireframe: boolean
-  toggleWireframe: () => void
+  // UI State
+  viewMode: 'solid' | 'wireframe' | 'solid+wireframe'
+  setViewMode: (mode: 'solid' | 'wireframe' | 'solid+wireframe') => void
+  showGrid: boolean
+  setShowGrid: (v: boolean) => void
+  showAxes: boolean
+  setShowAxes: (v: boolean) => void
 }
 
-export const useStore = create<Store>((set) => ({
-  // Geometry
-  geometry: null,
-  setGeometry: (geometry) => set({ geometry }),
+export const useModelStore = create<AppStore>((set) => ({
+  model: null,
+  setModel: (model) => set({ model }),
 
-  // Mesh
-  meshData: null,
-  setMeshData: (meshData) => set({ meshData }),
-
-  // Boundary conditions
   boundaryConditions: [],
-  addBoundaryCondition: (bc) =>
-    set((state) => ({
-      boundaryConditions: [...state.boundaryConditions, bc],
-    })),
-  removeBoundaryCondition: (id) =>
-    set((state) => ({
-      boundaryConditions: state.boundaryConditions.filter((bc) => bc.id !== id),
-    })),
-  updateBoundaryCondition: (id, updates) =>
-    set((state) => ({
-      boundaryConditions: state.boundaryConditions.map((bc) =>
-        bc.id === id ? { ...bc, ...updates } : bc
-      ),
-    })),
+  addBoundaryCondition: (bc) => set((s) => ({ boundaryConditions: [...s.boundaryConditions, bc] })),
+  removeBoundaryCondition: (id) => set((s) => ({ boundaryConditions: s.boundaryConditions.filter((b) => b.id !== id) })),
+  updateBoundaryCondition: (id, update) => set((s) => ({
+    boundaryConditions: s.boundaryConditions.map((b) => b.id === id ? { ...b, ...update } : b),
+  })),
 
-  // Optimization
-  optimizationResult: null,
-  setOptimizationResult: (optimizationResult) => set({ optimizationResult }),
+  contactConditions: [],
+  addContactCondition: (cc) => set((s) => ({ contactConditions: [...s.contactConditions, cc] })),
+  removeContactCondition: (id) => set((s) => ({ contactConditions: s.contactConditions.filter((c) => c.id !== id) })),
+  updateContactCondition: (id, update) => set((s) => ({
+    contactConditions: s.contactConditions.map((c) => c.id === id ? { ...c, ...update } : c),
+  })),
 
-  // UI
-  showWireframe: false,
-  toggleWireframe: () => set((state) => ({ showWireframe: !state.showWireframe })),
+  optimizationConfig: {
+    volumeFraction: 0.4,
+    penalty: 3.0,
+    filterRadius: 1.5,
+    maxIterations: 100,
+    tolerance: 1e-4,
+  },
+  setOptimizationConfig: (config) => set((s) => ({
+    optimizationConfig: { ...s.optimizationConfig, ...config },
+  })),
+  isOptimizing: false,
+  setIsOptimizing: (val) => set({ isOptimizing: val }),
+  currentJob: null,
+  setCurrentJob: (job) => set({ currentJob: job }),
+
+  viewMode: 'solid',
+  setViewMode: (mode) => set({ viewMode: mode }),
+  showGrid: true,
+  setShowGrid: (v) => set({ showGrid: v }),
+  showAxes: true,
+  setShowAxes: (v) => set({ showAxes: v }),
 }))
