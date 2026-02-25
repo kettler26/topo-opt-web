@@ -6,7 +6,7 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps) {
-  const { model, setModel, viewMode, setViewMode, showGrid, setShowGrid, showAxes, setShowAxes, isOptimizing } = useModelStore()
+  const { model, setModel, setMeshData, viewMode, setViewMode, showGrid, setShowGrid, showAxes, setShowAxes, isOptimizing } = useModelStore()
 
   const handleImport = async () => {
     const input = document.createElement('input')
@@ -32,6 +32,12 @@ export default function Toolbar({ sidebarOpen, onToggleSidebar }: ToolbarProps) 
           geometryUrl: `/api/geometry/${result.file_id}/download`,
           namedSelections: result.named_selections || [],
         })
+
+        const meshResponse = await fetch(`/api/geometry/${result.file_id}/mesh`)
+        if (meshResponse.ok) {
+          const mesh = await meshResponse.json()
+          setMeshData(mesh)
+        }
       } catch (err) {
         console.error('Import failed:', err)
         alert('Import fehlgeschlagen. Bitte Format prüfen.')

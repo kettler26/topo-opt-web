@@ -138,6 +138,21 @@ async def export_geometry(file_id: str, target_format: str = "stl"):
     }
 
 
+@router.get("/{file_id}/mesh")
+async def get_geometry_mesh(file_id: str):
+    """Get mesh data for viewer rendering."""
+    file_path = _find_file(UPLOAD_DIR, file_id) or _find_file(RESULT_DIR, file_id)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Geometrie nicht gefunden")
+
+    ext = Path(file_path).suffix.lower()
+    if ext in {".step", ".stp"} and step_service.available:
+        step_data = step_service.import_step(str(file_path))
+        return {"vertices": step_data["vertices"], "faces": step_data["faces"], "normals": step_data["normals"]}
+
+    return mesh_service.get_mesh_data(str(file_path))
+
+
 # ==========================================
 # Named Selections API
 # ==========================================

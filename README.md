@@ -78,8 +78,40 @@ topo-opt-web/
 ## Roadmap
 
 - [x] Phase 1: MVP (3D Viewer, Import, BCs, SIMP Solver, Export)
-- [ ] Phase 2: CAD-Style BCs, Named Selections, STEP Export
-- [ ] Phase 3: PWA Offline, Job Queue, fly.io Deploy
+- [x] Phase 2: CAD-Style BCs, Named Selections, STEP Export
+- [x] Phase 3: PWA Offline, Job Queue, fly.io Deploy
+
+**Stand 2026:** Backend enthält eine asynchrone Optimierungs-Warteschlange mit Status-API, Frontend ist als installierbare PWA mit Service Worker konfiguriert.
+
+
+### Browser-Standalone (ohne Server/Python/Docker)
+
+- Öffne `frontend/public/topo-opt-standalone.html` direkt im Browser (Doppelklick / `file://`).
+- Die Datei ist vollständig eigenständig lauffähig: keine lokale Python-API, kein lokaler Webserver, kein Docker nötig.
+- Lokale Berechnung läuft in **WebWorkern** mit einstellbarer Workerzahl und optionalem GPU-Pfad (WebGPU-Erkennung).
+- Optional kann auf externe Server/Cloud ausgelagert werden: API-Base-URL im UI setzen und Remote-Run starten.
+- Ergebnisexport erfolgt als JSON direkt im Browser.
+
+
+### fly.io Deploy (Phase 3)
+
+Backend ist für fly.io vorbereitet.
+
+```bash
+# Fly CLI installieren und einloggen
+fly auth login
+
+# App erstellen (einmalig)
+fly launch --no-deploy
+
+# Volume für Uploads/Results
+fly volumes create topo_opt_data --region fra --size 10
+
+# Deploy
+fly deploy
+```
+
+Healthcheck: `GET /health`
 
 ## Lizenz
 

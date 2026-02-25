@@ -11,7 +11,6 @@ export interface MeshInfo {
   bounds_min?: number[]
   bounds_max?: number[]
   center?: number[]
-  // STEP-specific
   solids?: number
   edges?: number
   error?: string
@@ -39,65 +38,42 @@ export interface BoundaryCondition {
   id: string
   type: string
   name: string
-  visible: boolean
+  visible?: boolean
   namedSelectionId?: string
-  config: Record<string, unknown>
+  config?: Record<string, unknown>
+  selectionType?: string
+  selectionIds?: number[]
+  forceVector?: number[]
+  pressureValue?: number
+  temperatureValue?: number
+  fixedDofs?: string[]
 }
 
-export interface ContactConditionData {
-  id: string
-  name: string
-  contactType: string
-  masterSelectionId: string
-  slaveSelectionId: string
-  frictionCoefficient: number
-  active: boolean
-}
-
-export interface OptimizationConfig {
-  volumeFraction: number
-  penalty: number
-  filterRadius: number
-  maxIterations: number
-  tolerance: number
-}
-
-export interface OptimizationJob {
-  jobId: string
+export interface OptimizationResult {
+  job_id: string
   status: string
-  iteration: number
-  maxIterations: number
-  compliance: number
-  change: number
-  resultFileId?: string
+  result?: {
+    final_compliance?: number
+    iterations?: number
+  }
 }
 
 interface AppStore {
-  // Model
   model: ModelData | null
   setModel: (model: ModelData | null) => void
+  meshData: { vertices: number[][]; faces: number[][]; normals?: number[][] } | null
+  setMeshData: (meshData: { vertices: number[][]; faces: number[][]; normals?: number[][] } | null) => void
 
-  // Boundary conditions
   boundaryConditions: BoundaryCondition[]
   addBoundaryCondition: (bc: BoundaryCondition) => void
   removeBoundaryCondition: (id: string) => void
   updateBoundaryCondition: (id: string, update: Partial<BoundaryCondition>) => void
 
-  // Contact conditions
-  contactConditions: ContactConditionData[]
-  addContactCondition: (cc: ContactConditionData) => void
-  removeContactCondition: (id: string) => void
-  updateContactCondition: (id: string, update: Partial<ContactConditionData>) => void
-
-  // Optimization
-  optimizationConfig: OptimizationConfig
-  setOptimizationConfig: (config: Partial<OptimizationConfig>) => void
   isOptimizing: boolean
   setIsOptimizing: (val: boolean) => void
-  currentJob: OptimizationJob | null
-  setCurrentJob: (job: OptimizationJob | null) => void
+  optimizationResult: OptimizationResult | null
+  setOptimizationResult: (result: OptimizationResult | null) => void
 
-  // UI State
   viewMode: 'solid' | 'wireframe' | 'solid+wireframe'
   setViewMode: (mode: 'solid' | 'wireframe' | 'solid+wireframe') => void
   showGrid: boolean
@@ -109,6 +85,8 @@ interface AppStore {
 export const useModelStore = create<AppStore>((set) => ({
   model: null,
   setModel: (model) => set({ model }),
+  meshData: null,
+  setMeshData: (meshData) => set({ meshData }),
 
   boundaryConditions: [],
   addBoundaryCondition: (bc) => set((s) => ({ boundaryConditions: [...s.boundaryConditions, bc] })),
@@ -117,27 +95,10 @@ export const useModelStore = create<AppStore>((set) => ({
     boundaryConditions: s.boundaryConditions.map((b) => b.id === id ? { ...b, ...update } : b),
   })),
 
-  contactConditions: [],
-  addContactCondition: (cc) => set((s) => ({ contactConditions: [...s.contactConditions, cc] })),
-  removeContactCondition: (id) => set((s) => ({ contactConditions: s.contactConditions.filter((c) => c.id !== id) })),
-  updateContactCondition: (id, update) => set((s) => ({
-    contactConditions: s.contactConditions.map((c) => c.id === id ? { ...c, ...update } : c),
-  })),
-
-  optimizationConfig: {
-    volumeFraction: 0.4,
-    penalty: 3.0,
-    filterRadius: 1.5,
-    maxIterations: 100,
-    tolerance: 1e-4,
-  },
-  setOptimizationConfig: (config) => set((s) => ({
-    optimizationConfig: { ...s.optimizationConfig, ...config },
-  })),
   isOptimizing: false,
   setIsOptimizing: (val) => set({ isOptimizing: val }),
-  currentJob: null,
-  setCurrentJob: (job) => set({ currentJob: job }),
+  optimizationResult: null,
+  setOptimizationResult: (optimizationResult) => set({ optimizationResult }),
 
   viewMode: 'solid',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -146,3 +107,5 @@ export const useModelStore = create<AppStore>((set) => ({
   showAxes: true,
   setShowAxes: (v) => set({ showAxes: v }),
 }))
+
+export const useStore = useModelStore

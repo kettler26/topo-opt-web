@@ -11,13 +11,13 @@ from app.api import geometry, optimization, health
 app = FastAPI(
     title="Topo-Opt-Web API",
     description="Topologie-Optimierung Backend mit 3D-Geometrieverarbeitung, CAD-Style BCs, und Named Selections",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,7 +37,7 @@ RESULT_DIR.mkdir(exist_ok=True)
 
 @app.on_event("startup")
 async def startup():
-    print("🏗️  Topo-Opt-Web Backend v0.2.0 gestartet")
+    print("🏗️  Topo-Opt-Web Backend v0.3.0 gestartet")
     print("📐 STEP-Support:", "verfügbar" if _check_occ() else "nicht verfügbar (pythonocc fehlt)")
 
 

@@ -14,7 +14,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - UPLOAD_DIR=/app/uploads
-      - RESULTS_DIR=/app/results
+      - RESULT_DIR=/app/results
     restart: unless-stopped
 
   frontend:
